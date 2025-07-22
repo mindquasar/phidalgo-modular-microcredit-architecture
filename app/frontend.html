@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Microcredit Application</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6f8;
+      color: #333;
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    h2, h3 {
+      color: #1e3a8a;
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 5px;
+    }
+
+    form {
+      margin-bottom: 30px;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 10px 16px;
+      background-color: #1e40af;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #2563eb;
+    }
+
+    pre {
+      background-color: #eef2ff;
+      padding: 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-family: monospace;
+    }
+
+    hr {
+      margin: 40px 0;
+      border: none;
+      border-top: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <!-- NUEVO: Formulario inicial para validar el DNI -->
+  <h2>Check your identity</h2>
+  <form id="dni-form">
+    <label for="dni_input">Enter your DNI:</label>
+    <input type="text" id="dni_input" placeholder="e.g. 07448485" required maxlength="8">
+    <button type="submit">Continue</button>
+  </form>
+
+  <div id="dni-message" style="margin-top:20px; font-weight:bold; color: #1e3a8a;"></div>
+
+  <!-- CONTENIDO ORIGINAL, oculto al inicio -->
+  <div id="main-form-section" style="display:none;">
+    <h2>Microcredit Application Form</h2>
+
+    <form id="credit-form">
+	  <label for="name">Full Name:</label>
+	  <input type="text" id="name" required>
+
+	  <label for="income">Monthly Income:</label>
+	  <input type="number" step="0.01" id="income" required>
+
+	  <label for="age">Age:</label>
+	  <input type="number" id="age" required>
+
+	  <label for="employment_status">Employment Status:</label>
+	  <select id="employment_status" required>
+		<option value="Employed">Employed</option>
+		<option value="Unemployed">Unemployed</option>
+		<option value="Freelancer">Freelancer</option>
+		<option value="Student">Student</option>
+	  </select>
+
+	  <label for="home_ownership">Home Ownership:</label>
+	  <select id="home_ownership" required>
+		<option value="RENT">Rent</option>
+		<option value="MORTGAGE">Mortgage</option>
+		<option value="OWN">Own</option>
+	  </select>
+
+	  <label for="loan_intent">Loan Intent:</label>
+	  <select id="loan_intent" required>
+		<option value="EDUCATION">Education</option>
+		<option value="MEDICAL">Medical</option>
+		<option value="VENTURE">Venture</option>
+		<option value="PERSONAL">Personal</option>
+	  </select>
+
+	  <label for="loan_grade">Loan Grade:</label>
+	  <select id="loan_grade" required>
+		<option value="A">A</option>
+		<option value="B">B</option>
+		<option value="C">C</option>
+		<option value="D">D</option>
+	  </select>
+
+	  <label for="loan_ammt">Loan Amount:</label>
+	  <input type="number" id="loan_ammt" value="8000" required>
+
+	  <label for="interest_rate">Interest Rate (%):</label>
+	  <input type="number" id="interest_rate" value="11.27" step="0.01" required>
+
+	  <label for="cred_hist">Credit History Length (years):</label>
+	  <input type="number" id="cred_hist" value="5" required>
+
+	  <!-- CAMPOS CALCULADOS - NO EDITABLES -->
+	  <label for="loan_percent_income">Loan Percent Income (auto):</label>
+	  <input type="number" id="loan_percent_income" readonly>
+
+	  <label for="cb_person_default_on_file">Credit Default Flag (auto):</label>
+	  <input type="text" id="cb_person_default_on_file" readonly>
+
+	  <button type="submit">Submit Application</button>
+	</form>
+
+
+    <h3>Scoring Result</h3>
+    <pre id="result">No result yet</pre>
+	<h3>Blockchain Contract Info</h3>
+	<pre id="contract-info">No data yet</pre>
+
+    <hr>
+
+    <h2>Check Application History</h2>
+
+    <form id="history-form">
+      <label for="history_id">Application ID:</label>
+      <input type="number" id="history_id" required>
+      <button type="submit">Get History</button>
+    </form>
+
+    <h3>History</h3>
+    <pre id="history-result">No history fetched</pre>
+  </div>
+
+  <!-- TU SCRIPT ORIGINAL MÁS LA NUEVA LÓGICA DE VALIDACIÓN -->
+  <script>
+    // NUEVO: Validar DNI al inicio
+    document.getElementById("dni-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const dni = document.getElementById("dni_input").value;
+
+      try {
+        const res = await fetch(`http://127.0.0.1:9000/clients/${dni}`);
+        if (res.ok) {
+          const client = await res.json();
+		  document.getElementById("dni-message").textContent =
+			`Evaluating credit, please wait... (Client: ${client.name})`;
+
+		  // Ocultar el formulario principal si está visible
+		  document.getElementById("main-form-section").style.display = "none";
+        } else if (res.status === 404) {
+          document.getElementById("dni-message").textContent =
+            "DNI not found. Please fill in the credit application form.";
+          document.getElementById("main-form-section").style.display = "block";
+        } else {
+          document.getElementById("dni-message").textContent = "Server error. Please try again.";
+        }
+      } catch (err) {
+        document.getElementById("dni-message").textContent = "Connection error. Please try later.";
+        console.error(err);
+      }
+    });
+
+    // TUS SCRIPTS ORIGINALES (credit-form, history-form, metamask...)
+    async function connectMetaMask() {
+      if (typeof window.ethereum === "undefined") {
+        alert("Please install MetaMask!");
+        return null;
+      }
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      return accounts[0];
+    }
+
+    document.getElementById("credit-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const income = parseFloat(document.getElementById("income").value);
+	  const loan_ammt = parseFloat(document.getElementById("loan_ammt").value);
+
+	  const loan_percent_income = parseFloat((loan_ammt / income).toFixed(3));
+	  document.getElementById("loan_percent_income").value = loan_percent_income;
+
+	  // Por ahora, default_flag simulado con lógica simple
+	  const cb_default_flag = loan_percent_income > 0.4 ? "Y" : "N";
+	  document.getElementById("cb_person_default_on_file").value = cb_default_flag;
+
+	  const data = {
+		  name: document.getElementById("name").value,
+		  age: parseInt(document.getElementById("age").value),
+		  income: income,
+		  employment_status: document.getElementById("employment_status").value,
+		  previous_credit_score: 0.0,
+
+		  person_home_ownership: document.getElementById("home_ownership").value,
+		  person_emp_length: 3.0,
+		  loan_intent: document.getElementById("loan_intent").value,
+		  loan_grade: document.getElementById("loan_grade").value,
+		  loan_ammt: loan_ammt,
+		  loan_int_rate: parseFloat(document.getElementById("interest_rate").value),
+		  loan_percent_income: loan_percent_income,
+		  cb_person_default_on_file: cb_default_flag,
+		  cb_person_cred_hist_length: parseInt(document.getElementById("cred_hist").value)
+	  };
+
+      console.log("Enviando solicitud:", data);
+
+      const response = await fetch("http://127.0.0.1:9000/applications/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+	  console.log('response: ', response);
+	  if (!response.ok) {
+		  const errorData = await response.json();
+		  console.error("Detalles del error:", errorData);
+	  }
+ 	
+      const result = await response.json();
+
+      let color = "black";
+      if (result.risk_segment === "Riesgo bajo") color = "green";
+      else if (result.risk_segment === "Riesgo medio") color = "orange";
+      else if (result.risk_segment === "Riesgo alto") color = "red";
+
+      document.getElementById("result").innerHTML =
+        `<div style="color:${color}; font-weight:bold;">
+          ✅ Aprobado: ${result.approved}<br>
+          🏦 Puntaje FICO: ${result.score}<br>
+          📊 Segmento de riesgo: ${result.risk_segment}<br>
+          📝 Mensaje: ${result.message || 'Ninguno'}
+        </div>`;
+      console.log("Aprobado:", result.approved);
+
+      if (result.approved) {
+        const address = await connectMetaMask();
+        console.log("address:", address);
+        if (!address) return;
+
+        const txRequest = {
+          client: document.getElementById("name").value,
+          amount: Math.floor(income),
+          approved: true,
+          sender_address: address
+        };
+
+        const txResponse = await fetch("http://127.0.0.1:9000/prepare_tx", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(txRequest),
+        });
+
+        const txData = await txResponse.json();
+        console.log("TX for MetaMask", txData);
+
+        try {
+          const txHash = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [txData],
+          });
+
+          alert("Transaction sent! Hash: " + txHash);
+		  document.getElementById("contract-info").textContent = 
+		  `📬 Contrato: ${txData.to}\n` +
+		  `🔑 Emisor: ${txData.from}\n` +
+		  `💰 Valor (wei): ${parseInt(txData.value, 16)}\n` +
+		  `⛽ Gas: ${parseInt(txData.gas, 16)}\n` +
+		  `🧮 Gas Price: ${parseInt(txData.gasPrice, 16)}\n` +
+		  `🧾 Data: ${txData.data}`;
+
+        } catch (err) {
+          alert("Transaction rejected: " + err.message);
+        }
+      }
+    });
+
+    document.getElementById("history-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const id = document.getElementById("history_id").value;
+      const response = await fetch(`http://127.0.0.1:9000/history/${id}`);
+      const history = await response.json();
+
+      document.getElementById("history-result").textContent = JSON.stringify(history, null, 2);
+    });
+  </script>
+</body>
+</html>
